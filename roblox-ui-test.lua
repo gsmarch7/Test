@@ -1,83 +1,136 @@
--- UI_Lib ModuleScript
-local UI_Lib = {}
-
--- Configuração inicial
 local Player = game.Players.LocalPlayer
 local InputService = game:GetService("UserInputService")
-local Mouse = Player:GetMouse()
 
--- Função para criar uma nova janela
-function UI_Lib:CreateWindow(size, position, title)
-    local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Parent = Player:WaitForChild("PlayerGui")
-    
-    local window = Instance.new("Frame")
-    window.Size = UDim2.new(size.X, 0, size.Y, 0)
-    window.Position = UDim2.new(position.X, 0, position.Y, 0)
-    window.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    window.Parent = ScreenGui
+local UI_Library = {}
+UI_Library.__index = UI_Library
 
-    -- Adiciona título
-    local titleLabel = Instance.new("TextLabel")
-    titleLabel.Text = title or "Window"
-    titleLabel.Size = UDim2.new(1, 0, 0.1, 0)
-    titleLabel.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    titleLabel.Parent = window
-    
-    -- Adiciona gradiente ao fundo
-    local gradient = Instance.new("UIGradient")
-    gradient.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(120, 160, 255)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(144, 238, 144))
+-- Configurações da UI
+UI_Library.FCgf = {
+    BackSize = UDim2.new(0.27775, 0, 0.5555, 0),
+    MenuSize = UDim2.new(0.97722, 0, 0.97722, 0),
+    CornerRadius = UDim.new(0.004, 0),
+    Colors = {
+        Background = Color3.fromRGB(50, 50, 50),
+        Frame = Color3.fromRGB(20, 20, 20),
+        GradientStart = Color3.fromRGB(120, 160, 255),
+        GradientEnd = Color3.fromRGB(144, 238, 144)
     }
-    gradient.Parent = window
+}
 
-    -- Função para arrastar a janela
-    self:MakeDraggable(window)
-    return window
+-- Função para criar um novo UI Elemento
+function UI_Library:createUIElement(class, properties, parent)
+    local element = Instance.new(class)
+    for prop, value in pairs(properties) do
+        element[prop] = value
+    end
+    element.Parent = parent
+    return element
 end
 
--- Função para tornar a janela arrastável
-function UI_Lib:MakeDraggable(frame)
-    local isDragging = false
-    local dragStart, startPos
-    
-    frame.InputBegan:Connect(function(input)
+-- Cria uma nova janela
+function UI_Library:createWindow(title)
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Parent = Player:WaitForChild("PlayerGui")
+
+    -- Cria o Frame de fundo
+    local BackG = self:createUIElement("Frame", {
+        Size = self.FCgf.BackSize,
+        Position = UDim2.new(0.5 - self.FCgf.BackSize.X.Scale / 2, 0, 0.5 - self.FCgf.BackSize.Y.Scale / 2, 0),
+        BackgroundColor3 = self.FCgf.Colors.Background
+    }, ScreenGui)
+
+    -- Frame principal com contorno e arredondamento
+    local Frame = self:createUIElement("Frame", {
+        Size = self.FCgf.MenuSize,
+        Position = UDim2.new(0.5 - self.FCgf.MenuSize.X.Scale / 2, 0, 0.5 - self.FCgf.MenuSize.Y.Scale / 2, 0),
+        BackgroundColor3 = self.FCgf.Colors.Frame
+    }, BackG)
+    self:createUIElement("UICorner", { CornerRadius = self.FCgf.CornerRadius }, Frame)
+    self:createUIElement("UIStroke", {}, Frame)
+
+    -- Frame de gradiente com transição de cor
+    local GradientFrame = self:createUIElement("Frame", {
+        Size = UDim2.new(1, 0.5, 0.002, 0),
+        Position = UDim2.new(0.00125, 0, 0.0045, 0),
+        BackgroundColor3 = Color3.new(1, 1, 1)
+    }, Frame)
+    self:createUIElement("UIGradient", {
+        Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, self.FCgf.Colors.GradientStart),
+            ColorSequenceKeypoint.new(1, self.FCgf.Colors.GradientEnd)
+        })
+    }, GradientFrame)
+
+    -- Funções de movimentação
+    local isDragging, dragStart, startPos = false
+
+    local function onMouseDown(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             isDragging = true
-            dragStart = Vector2.new(Mouse.X, Mouse.Y)
-            startPos = frame.Position
+            dragStart = Vector2.new(input.Position.X, input.Position.Y)
+            startPos = BackG.Position
         end
-    end)
-    
-    InputService.InputChanged:Connect(function(input)
-        if isDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            local delta = Vector2.new(Mouse.X, Mouse.Y) - dragStart
-            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+
+    local function onMouseMove(input)
+        if isDragging then
+            local delta = Vector2.new(input.Position.X, input.Position.Y) - dragStart
+            local newPositionX = startPos.X.Offset + delta.X
+            local newPositionY = startPos.Y.Offset + delta.Y
+
+            -- Limites da tela
+            local screenWidth = workspace.CurrentCamera.ViewportSize.X
+            local screenHeight = workspace.CurrentCamera.ViewportSize.Y
+            local backGWidth = BackG.AbsoluteSize.X
+            local backGHeight = BackG.AbsoluteSize.Y
+
+            -- Calcula as novas posições com limites
+            newPositionX = math.clamp(newPositionX, 0, screenWidth - backGWidth)
+            newPositionY = math.clamp(newPositionY, 0, screenHeight - backGHeight)
+
+            -- Atualiza a posição do BackG usando apenas Offset
+            BackG.Position = UDim2.new(0, newPositionX, 0, newPositionY)
         end
-    end)
-    
-    InputService.InputEnded:Connect(function(input)
+    end
+
+    local function onMouseUp(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             isDragging = false
         end
+    end
+
+    -- Conectar eventos de mouse ao BackG
+    BackG.InputBegan:Connect(onMouseDown)
+    InputService.InputEnded:Connect(onMouseUp)
+    InputService.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            onMouseMove(input)
+        end
     end)
+
+    return Frame
 end
 
--- Função para criar um botão
-function UI_Lib:CreateButton(parent, text, callback)
-    local button = Instance.new("TextButton")
-    button.Text = text or "Button"
-    button.Size = UDim2.new(0.8, 0, 0.1, 0)
-    button.Position = UDim2.new(0.1, 0, 0.15, 0)
-    button.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    button.Parent = parent
-    
-    button.MouseButton1Click:Connect(function()
-        if callback then callback() end
+-- Cria um botão na janela
+function UI_Library:createButton(window, text, callback)
+    local Button = self:createUIElement("TextButton", {
+        Size = UDim2.new(0.5, 0, 0.1, 0),
+        Position = UDim2.new(0.25, 0, 0.1, 0),
+        BackgroundColor3 = Color3.fromRGB(70, 70, 70),
+        Text = text,
+        TextColor3 = Color3.new(1, 1, 1),
+        Font = Enum.Font.SourceSans,
+        TextSize = 24,
+        AutoButtonColor = false,
+        Parent = window
+    })
+
+    Button.MouseButton1Click:Connect(function()
+        callback()
     end)
-    
-    return button
+
+    return Button
 end
 
-return UI_Lib
+-- Retorna a biblioteca
+return UI_Library
