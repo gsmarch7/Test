@@ -13,7 +13,9 @@ UI_Library.FCgf = {
         Background = Color3.fromRGB(50, 50, 50),
         Frame = Color3.fromRGB(20, 20, 20),
         GradientStart = Color3.fromRGB(120, 160, 255),
-        GradientEnd = Color3.fromRGB(144, 238, 144)
+        GradientEnd = Color3.fromRGB(144, 238, 144),
+        CheckboxChecked = Color3.fromRGB(0, 255, 0),
+        CheckboxUnchecked = Color3.fromRGB(255, 0, 0)
     }
 }
 
@@ -130,6 +132,43 @@ function UI_Library:createButton(window, text, callback)
     end)
 
     return Button
+end
+
+-- Cria um checkbox na janela
+function UI_Library:createCheckbox(window, text, defaultValue, callback)
+    local Checkbox = self:createUIElement("Frame", {
+        Size = UDim2.new(0.5, 0, 0.1, 0),
+        Position = UDim2.new(0.25, 0, 0.1, 0),
+        BackgroundColor3 = Color3.fromRGB(70, 70, 70),
+        Parent = window
+    })
+
+    local CheckboxLabel = self:createUIElement("TextLabel", {
+        Size = UDim2.new(0.8, 0, 1, 0),
+        Position = UDim2.new(0.1, 0, 0, 0),
+        BackgroundColor3 = Color3.fromRGB(70, 70, 70),
+        Text = text,
+        TextColor3 = Color3.new(1, 1, 1),
+        Font = Enum.Font.SourceSans,
+        TextSize = 24,
+        Parent = Checkbox
+    })
+
+    local CheckboxButton = self:createUIElement("TextButton", {
+        Size = UDim2.new(0.1, 0, 0.8, 0),
+        Position = UDim2.new(0.9, 0, 0.1, 0),
+        BackgroundColor3 = defaultValue and self.FCgf.Colors.CheckboxChecked or self.FCgf.Colors.CheckboxUnchecked,
+        Text = "",
+        Parent = Checkbox
+    })
+
+    CheckboxButton.MouseButton1Click:Connect(function()
+        defaultValue = not defaultValue
+        CheckboxButton.BackgroundColor3 = defaultValue and self.FCgf.Colors.CheckboxChecked or self.FCgf.Colors.CheckboxUnchecked
+        callback(defaultValue) -- Chama o callback com o novo valor
+    end)
+
+    return Checkbox
 end
 
 -- Retorna a biblioteca
